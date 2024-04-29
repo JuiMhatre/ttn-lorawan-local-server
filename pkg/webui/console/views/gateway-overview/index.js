@@ -47,6 +47,7 @@ import {
 import { selectSelectedGateway } from '@console/store/selectors/gateways'
 
 import style from './gateway-overview.styl'
+import GatewayStatusPanel from '@console/containers/gateway-status-panel'
 
 const m = defineMessages({
   downloadGlobalConf: 'Download global_conf.json',
@@ -64,7 +65,7 @@ const GatewayOverview = () => {
   const { ids, description, created_at, updated_at, frequency_plan_ids, gateway_server_address } =
     gateway
 
-  const handleGlobalConfDownload = useCallback(async () => {
+/*   const handleGlobalConfDownload = useCallback(async () => {
     try {
       const globalConf = await tts.Gateways.getGlobalConf(gtwId)
       const globalConfDataUri = composeDataUri(JSON.stringify(globalConf, undefined, 2))
@@ -147,11 +148,16 @@ const GatewayOverview = () => {
     })
   }
 
-  sheetData.push(lorawanInfo)
+  sheetData.push(lorawanInfo) */
 
   return (
     <Require featureCheck={mayViewGatewayInfo} otherwise={{ redirect: '/' }}>
-      <div className={style.titleSection}>
+      <div className="container container--xl grid p-ls-s gap-ls-s">
+        <div className="item-12 md:item-12 lg:item-6 sm:item-6">
+          <GatewayStatusPanel />
+        </div>
+      </div>
+      {/* <div className={style.titleSection}>
         <div className="container container--lg p-vert-0">
           <IntlHelmet title={sharedMessages.overview} />
           <GatewayTitleSection gtwId={gtwId} />
@@ -165,7 +171,7 @@ const GatewayOverview = () => {
           <GatewayEvents gtwId={gtwId} widget />
           <GatewayMap gtwId={gtwId} gateway={gateway} />
         </div>
-      </div>
+      </div> */}
     </Require>
   )
 }

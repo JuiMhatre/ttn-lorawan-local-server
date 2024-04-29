@@ -23,7 +23,7 @@ import Icon from '../icon'
 
 import style from './status-label.styl'
 
-const StatusLabel = ({ success, warning, error, info, content }) => {
+const StatusLabel = ({ success, warning, error, info, content, contentValues }) => {
   const statusClassName = classnames(style.label, {
     'c-bg-success-light c-text-success-bold': success,
     'c-bg-warning-light c-text-warning-bold': warning,
@@ -36,13 +36,14 @@ const StatusLabel = ({ success, warning, error, info, content }) => {
   return (
     <div className={statusClassName}>
       <Icon icon={labelIcon} className={style.labelIcon} />
-      <Message content={content} className={style.labelContent} />
+      <Message content={content} values={{ ...contentValues }} className={style.labelContent} />
     </div>
   )
 }
 
 StatusLabel.propTypes = {
   content: PropTypes.message.isRequired,
+  contentValues: PropTypes.node,
   error: PropTypes.bool,
   info: PropTypes.bool,
   success: PropTypes.bool,
@@ -54,6 +55,7 @@ StatusLabel.defaultProps = {
   warning: false,
   error: false,
   info: false,
+  contentValues: undefined,
 }
 
 export default StatusLabel
