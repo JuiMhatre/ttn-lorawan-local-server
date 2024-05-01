@@ -15,11 +15,16 @@
 import React from 'react'
 import classnames from 'classnames'
 
+import Icon, {
+  IconCircleCheckFilled,
+  IconAlertTriangleFilled,
+  IconExclamationCircle,
+  IconInfoCircleFilled,
+} from '@ttn-lw/components/icon'
+
 import Message from '@ttn-lw/lib/components/message'
 
 import PropTypes from '@ttn-lw/lib/prop-types'
-
-import Icon from '../icon'
 
 import style from './status-label.styl'
 
@@ -31,7 +36,13 @@ const StatusLabel = ({ success, warning, error, info, content, contentValues }) 
     'c-bg-info-light c-text-info-bold': info,
   })
 
-  const labelIcon = success ? 'check_circle' : warning ? 'warning' : error ? 'error' : 'info'
+  const labelIcon = success
+    ? IconCircleCheckFilled
+    : warning
+      ? IconAlertTriangleFilled
+      : error
+        ? IconExclamationCircle
+        : IconInfoCircleFilled
 
   return (
     <div className={statusClassName}>
