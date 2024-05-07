@@ -612,6 +612,11 @@ func requireDisconnect(connected, current *ttnpb.Gateway) bool {
 			return true
 		}
 	}
+	if len(connected.Antennas) > 0 &&
+		len(current.Antennas) > 0 &&
+		!sameAntennaGain(connected.GetAntennas(), current.GetAntennas()) {
+		return true
+	}
 	if connected.DownlinkPathConstraint != current.DownlinkPathConstraint ||
 		connected.DisablePacketBrokerForwarding != current.DisablePacketBrokerForwarding ||
 		connected.EnforceDutyCycle != current.EnforceDutyCycle ||
@@ -1102,6 +1107,19 @@ func sameAntennaLocations(a, b []*ttnpb.GatewayAntenna) bool {
 			return false
 		}
 		if (a.Location == nil) != (b.Location == nil) {
+			return false
+		}
+	}
+	return true
+}
+
+func sameAntennaGain(a, b []*ttnpb.GatewayAntenna) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		a, b := a[i], b[i]
+		if a.Gain != b.Gain {
 			return false
 		}
 	}
