@@ -2004,7 +2004,7 @@ func TestADRMargin(t *testing.T) {
 			t.Parallel()
 
 			a, ctx := test.New(t)
-			margin, optimal, ok, err := ADRMargin(ctx, tc.Device, tc.Defaults, tc.Uplinks...)
+			margin, optimal, maxSNR, demodfloor, ok, err := ADRMargin(ctx, tc.Device, tc.Defaults, tc.Uplinks...)
 			if assertError := tc.AssertError; assertError != nil {
 				a.So(assertError(err), should.BeTrue)
 			} else {
@@ -2012,6 +2012,8 @@ func TestADRMargin(t *testing.T) {
 				a.So(optimal, should.Equal, tc.Optimal)
 				a.So(ok, should.Equal, tc.Ok)
 				a.So(err, should.BeNil)
+				a.So(maxSNR, should.BeGreaterThan, 0)
+				a.So(demodfloor, should.BeGreaterThan, 0)
 			}
 		})
 	}

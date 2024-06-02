@@ -21,6 +21,7 @@ import (
 	"go.thethings.network/lorawan-stack/v3/pkg/experimental"
 	"go.thethings.network/lorawan-stack/v3/pkg/log"
 	"go.thethings.network/lorawan-stack/v3/pkg/networkserver/internal"
+	"go.thethings.network/lorawan-stack/v3/pkg/networkserver/sarsa"
 	"go.thethings.network/lorawan-stack/v3/pkg/ttnpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -546,11 +547,12 @@ func adrTxPowerRange(
 
 func adrMargin(
 	ctx context.Context, dev *ttnpb.EndDevice, defaults *ttnpb.MACSettings, adrUplinks ...*ttnpb.MACState_UplinkMessage,
-) (margin float32, optimal bool, ok bool, err error) {
+) (margin float32, optimal bool, maxsnr float32, df float32, ok bool, err error) {
+
 	maxSNR, ok := maxSNRFromMetadata(uplinkMetadata(adrUplinks...)...)
 	if !ok {
 		log.FromContext(ctx).Debug("Failed to determine max SNR, avoid ADR")
-		return 0, false, false, nil
+		return 0, false, maxSNR, 0, false, nil
 	}
 	// The link margin indicates how much stronger the signal (SNR) is than the
 	// minimum (floor) that we need to demodulate the signal. We subtract a
@@ -560,7 +562,7 @@ func adrMargin(
 		var ok bool
 		df, ok := demodulationFloor[dr.SpreadingFactor][dr.Bandwidth]
 		if !ok {
-			return 0, false, false, internal.ErrInvalidDataRate.New()
+			return 0, false, maxSNR, df, false, internal.ErrInvalidDataRate.New()
 		}
 		margin = maxSNR - df - DeviceADRMargin(dev, defaults)
 	}
@@ -570,7 +572,7 @@ func adrMargin(
 	if !optimal {
 		margin -= safetyMargin
 	}
-	return margin, optimal, true, nil
+	return margin, optimal, maxSNR, df, true, nil
 }
 
 func adrAdaptDataRate(
@@ -685,7 +687,7 @@ func adaptDataRate(ctx context.Context, dev *ttnpb.EndDevice, phy *band.Band, de
 	if !ok {
 		return nil
 	}
-	margin, optimal, ok, err := adrMargin(ctx, dev, defaults, adrUplinks...)
+	margin, optimal, maxSNR, demodfloor, ok, err := adrMargin(ctx, dev, defaults, adrUplinks...)
 	if err != nil || !ok {
 		return err
 	}
@@ -696,6 +698,24 @@ func adaptDataRate(ctx context.Context, dev *ttnpb.EndDevice, phy *band.Band, de
 		margin = adrAdaptDataRate(
 			macState, phy, minDataRateIndex, maxDataRateIndex, allowedDataRateIndices, minTxPowerIndex, margin,
 		)
+	}
+
+	//changes to call SARSA to suggest the desired adrdatarateindex
+	if maxSNR > 0 && demodfloor > 0 {
+		macState.GetLastDevStatusFCntUp()
+		device := sarsa.Device{
+
+			Locationx:           int(dev.Locations["user"].Latitude),
+			Locationy:           int(dev.Locations["user"].Longitude),
+			SNR:                 maxSNR,
+			CurrentDataRate:     macState.CurrentParameters.AdrDataRateIndex,
+			CurrentDemodFloor:   float64(demodfloor),
+			CurrentBatteryLevel: float64(dev.BatteryPercentage.GetValue()),
+			ChannelSteering:     deviceADRChannelSteering(dev, defaults).GetLoraNarrow() != nil,
+		}
+
+		macState.DesiredParameters.AdrDataRateIndex = sarsa.ScheduleSarsa(device, macState.DesiredParameters.AdrDataRateIndex)
+		macState.DesiredParameters.AdrTxPowerIndex = 0
 	}
 	margin = adrAdaptTxPowerIndex(
 		macState, phy, minTxPowerIndex, maxTxPowerIndex, rejectedTxPowerIndices, margin, optimal,

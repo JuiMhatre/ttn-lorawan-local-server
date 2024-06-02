@@ -46,6 +46,7 @@ import (
 	"go.thethings.network/lorawan-stack/v3/pkg/gatewayserver/upstream/ns"
 	"go.thethings.network/lorawan-stack/v3/pkg/gatewayserver/upstream/packetbroker"
 	"go.thethings.network/lorawan-stack/v3/pkg/log"
+	"go.thethings.network/lorawan-stack/v3/pkg/networkserver/sarsa"
 	"go.thethings.network/lorawan-stack/v3/pkg/random"
 	"go.thethings.network/lorawan-stack/v3/pkg/rpcmetadata"
 	"go.thethings.network/lorawan-stack/v3/pkg/rpcmiddleware/hooks"
@@ -566,6 +567,7 @@ func (gs *GatewayServer) Connect(
 	})
 	logger.Info("Connected")
 
+	sarsa.CreateSARSAModel()
 	gs.startDisconnectOnChangeTask(connEntry)
 	gs.startHandleUpstreamTask(connEntry)
 	gs.startUpdateConnStatsTask(connEntry)
