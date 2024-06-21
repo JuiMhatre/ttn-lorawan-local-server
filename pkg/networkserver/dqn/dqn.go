@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sarsa
+package dqn
 
 import (
 	"fmt"
@@ -51,16 +51,17 @@ var (
 	numDevices = 10
 	numStates  = 16 // Assuming we discretize the combined state space into 16 states for simplicity
 	nn         *NeuralNetwork
+	targetNN   *NeuralNetwork
 	memory     []Experience
 )
 
 // Experience represents a SARSA experience tuple
 type Experience struct {
-	State      []float64 //comments************
-	Action     ttnpb.DataRateIndex
-	Reward     float64
-	NextState  []float64
-	NextAction ttnpb.DataRateIndex
+	State     []float64 //comments************
+	Action    ttnpb.DataRateIndex
+	Reward    float64
+	NextState []float64
+	Done      bool
 }
 
 // NeuralNetwork represents a simple neural network for Q-value approximation
@@ -114,8 +115,11 @@ func (nn *NeuralNetwork) Train(batch []Experience) error {
 	for i, exp := range batch {
 		copy(states[i*nn.stateSize:(i+1)*nn.stateSize], float64ToFloat32(exp.State))
 		qValues, _ := nn.Predict(exp.State)
-		nextQValues, _ := nn.Predict(exp.NextState)
-		target := qValues[exp.Action] + alpha*(exp.Reward+gamma*nextQValues[exp.NextAction]-qValues[exp.Action])
+		nextQValues, _ := targetNN.Predict(exp.NextState)
+		target := exp.Reward
+		if !exp.Done {
+			target += gamma * max(nextQValues)
+		}
 		copy(targets[i*nn.actionSize:(i+1)*nn.actionSize], float64ToFloat32(qValues))
 		targets[i*nn.actionSize+int(exp.Action)] = float32(target)
 	}
@@ -138,6 +142,16 @@ func (nn *NeuralNetwork) Train(batch []Experience) error {
 
 	nn.solver.Step(valueGrads)
 	return nn.vmachine.RunAll()
+}
+
+func max(qValues []float64) float64 {
+	maxValue := qValues[0]
+	for _, value := range qValues {
+		if value > maxValue {
+			maxValue = value
+		}
+	}
+	return maxValue
 }
 
 // Helper functions
@@ -202,17 +216,24 @@ func getNextState(device Device, action ttnpb.DataRateIndex) Device {
 	return device
 }
 
-func CreateSARSAModel() {
+func CreateDQNModel() {
 	numDevices = gatewayload
 	numStates = 6 * numDevices // for each devices, 2 locations, 1 SNR, 1 current dr, 1 current demodfloor, 1 channelsteering
 	// Initialize the neural network
 	nn = NewNeuralNetwork(numStates, numActions)
+	targetNN = NewNeuralNetwork(numStates, numActions)
 	// Initialize experience replay memory
 	memory = make([]Experience, 0, memorySize)
 }
 
+// UpdateTargetNetwork updates the target network with the weights of the primary network
+func UpdateTargetNetwork() {
+	targetNN.w0 = nn.w0
+	targetNN.w1 = nn.w1
+}
+
 // Main function
-func ScheduleSarsa(device Device, adr_datarate ttnpb.DataRateIndex) ttnpb.DataRateIndex {
+func ScheduleDQN(device Device, adr_datarate ttnpb.DataRateIndex) ttnpb.DataRateIndex {
 
 	// Initialize devices
 
@@ -223,22 +244,24 @@ func ScheduleSarsa(device Device, adr_datarate ttnpb.DataRateIndex) ttnpb.DataRa
 	nextDevice := getNextState(device, action)
 	reward := getReward(device)
 	nextState := stateToFloatArray(nextDevice)
-	nextAction := chooseAction(nn, nextState, adr_datarate)
+	done := false
 
 	// Store experience in memory
 	if len(memory) >= memorySize {
 		memory = memory[1:]
 	}
-	memory = append(memory, Experience{State: state, Action: action, Reward: reward, NextState: nextState, NextAction: nextAction})
+	memory = append(memory, Experience{State: state, Action: action, Reward: reward, NextState: nextState, Done: done})
 
 	// Train the neural network with a batch from memory
 	if len(memory) >= batchSize {
 		batch := memory[rand.Intn(len(memory)-batchSize+1) : rand.Intn(len(memory)-batchSize+1)+batchSize]
 		nn.Train(batch)
 	}
-
+	if rand.Intn(10) == 0 { // Update target network every 10 steps (example)
+		UpdateTargetNetwork()
+	}
 	fmt.Println("Prediction completed.")
-	return nextAction
+	return chooseAction(nn, nextState, adr_datarate)
 }
 
 func getReward(device Device) float64 {

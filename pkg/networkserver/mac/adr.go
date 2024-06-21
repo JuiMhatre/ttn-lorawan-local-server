@@ -21,7 +21,9 @@ import (
 	"go.thethings.network/lorawan-stack/v3/pkg/experimental"
 	"go.thethings.network/lorawan-stack/v3/pkg/log"
 	"go.thethings.network/lorawan-stack/v3/pkg/networkserver/internal"
-	"go.thethings.network/lorawan-stack/v3/pkg/networkserver/sarsa"
+
+	//"go.thethings.network/lorawan-stack/v3/pkg/networkserver/sarsa"
+	"go.thethings.network/lorawan-stack/v3/pkg/networkserver/dqn"
 	"go.thethings.network/lorawan-stack/v3/pkg/ttnpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -703,7 +705,7 @@ func adaptDataRate(ctx context.Context, dev *ttnpb.EndDevice, phy *band.Band, de
 	//changes to call SARSA to suggest the desired adrdatarateindex
 	if maxSNR > 0 && demodfloor > 0 {
 		macState.GetLastDevStatusFCntUp()
-		device := sarsa.Device{
+		device := dqn.Device{
 
 			Locationx:           int(dev.Locations["user"].Latitude),
 			Locationy:           int(dev.Locations["user"].Longitude),
@@ -714,7 +716,7 @@ func adaptDataRate(ctx context.Context, dev *ttnpb.EndDevice, phy *band.Band, de
 			ChannelSteering:     deviceADRChannelSteering(dev, defaults).GetLoraNarrow() != nil,
 		}
 
-		macState.DesiredParameters.AdrDataRateIndex = sarsa.ScheduleSarsa(device, macState.DesiredParameters.AdrDataRateIndex)
+		macState.DesiredParameters.AdrDataRateIndex = dqn.ScheduleDQN(device, macState.DesiredParameters.AdrDataRateIndex)
 		macState.DesiredParameters.AdrTxPowerIndex = 0
 	}
 	margin = adrAdaptTxPowerIndex(
