@@ -84,3 +84,12 @@ You can find the releases and their notes on the [Releases page](https://github.
 - The [forum](https://www.thethingsnetwork.org/forum) contains a large amount of information and has great search support.
 - You can chat in the [#the-things-stack channel on Slack](https://thethingsnetwork.slack.com/messages/CFVF7R4AH/). If you don't have a Slack account yet, you can create one by going to [ttn.fyi/slack-invite](https://ttn.fyi/slack-invite).
 - Hosted solutions, as well as commercial support and consultancy are offered by [The Things Industries](https://www.thethingsindustries.com).
+
+## To update the Scheduling algorithm (Can choose DQN or SARSA or ADR)
+- Follow commit 499448216e3a62fa75d0669851b7929f8f02bd48 for SARSA
+- Follow commit 8e90cde37025b02f5e4f64daf9abf4622346978e for DQN
+- Default impl is DQN
+- Changes are to be done in :
+  pkg/gatewayserver/gatewayserver.go
+  pkg/networkserver/mac/adr.go
+  
